@@ -1,0 +1,19 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  moduleFormat    = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model usuarios {
+  id_usuario     BigInt   @id @default(autoincrement())
+  nombre         String   @db.VarChar(100)
+  correo         String   @db.VarChar(150)
+  password_hash  String
+  fecha_registro DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([correo])
+}
