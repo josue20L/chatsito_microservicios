@@ -1,0 +1,27 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  moduleFormat    = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model conversaciones {
+  id_conversacion BigInt          @id @default(autoincrement())
+  tipo            String          @db.VarChar(10)
+  nombre          String?         @db.VarChar(100)
+  fecha_creacion  DateTime        @default(now()) @db.Timestamptz(6)
+  participantes   participantes[]
+}
+
+model participantes {
+  id_conversacion BigInt
+  id_usuario      BigInt
+  fecha_union     DateTime       @default(now()) @db.Timestamptz(6)
+  conversaciones  conversaciones @relation(fields: [id_conversacion], references: [id_conversacion], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([id_conversacion, id_usuario])
+  @@index([id_usuario], map: "idx_participantes_usuario")
+}
