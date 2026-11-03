@@ -1,0 +1,40 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  moduleFormat    = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model mensajes {
+  id_mensaje        BigInt          @id @default(autoincrement())
+  id_conversacion   BigInt
+  id_remitente      BigInt
+  contenido         String?
+  tipo              String          @default("texto") @db.VarChar(10)
+  fecha_envio       DateTime        @default(now()) @db.Timestamptz(6)
+  editado_en        DateTime?       @db.Timestamptz(6)
+  eliminado_en      DateTime?       @db.Timestamptz(6)
+  reenviado_de_id   BigInt?
+  lecturas_mensajes lecturas_mensajes[]
+  reenviado_de      mensajes?       @relation("MensajesReenviados", fields: [reenviado_de_id], references: [id_mensaje], onDelete: SetNull)
+  reenviados        mensajes[]      @relation("MensajesReenviados")
+
+  @@unique([id_conversacion, id_mensaje])
+  @@unique([id_mensaje, tipo])
+  @@index([id_conversacion, fecha_envio], map: "idx_mensajes_conversacion_fecha")
+  @@index([id_remitente], map: "idx_mensajes_remitente")
+}
+
+model lecturas_mensajes {
+  id_conversacion BigInt
+  id_mensaje      BigInt
+  id_usuario      BigInt
+  fecha_lectura   DateTime        @default(now()) @db.Timestamptz(6)
+  mensaje         mensajes        @relation(fields: [id_conversacion, id_mensaje], references: [id_conversacion, id_mensaje], onDelete: Cascade)
+
+  @@id([id_mensaje, id_usuario])
+  @@index([id_usuario], map: "idx_lecturas_usuario")
+}

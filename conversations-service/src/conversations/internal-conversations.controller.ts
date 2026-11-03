@@ -14,4 +14,13 @@ export class InternalConversationsController {
     const participa = await this.conversationsService.esParticipante(id, userId);
     return { participa };
   }
+
+  @Get(':id/participants')
+  async getParticipants(@Param('id') id: string) {
+    if (!/^\d+$/.test(id)) {
+      throw new BadRequestException('id debe ser un número');
+    }
+    const participantes = await this.conversationsService.getParticipants(id);
+    return { participantes };
+  }
 }

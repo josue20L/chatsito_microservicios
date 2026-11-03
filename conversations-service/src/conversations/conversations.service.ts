@@ -234,4 +234,13 @@ export class ConversationsService {
     });
     return p !== null;
   }
+
+  // Devuelve los ids de participantes de una conversación (para notifications-service)
+  async getParticipants(idConversacion: string): Promise<string[]> {
+    const participantes = await this.prisma.participantes.findMany({
+      where: { id_conversacion: BigInt(idConversacion) },
+      select: { id_usuario: true },
+    });
+    return participantes.map((p) => p.id_usuario.toString());
+  }
 }
