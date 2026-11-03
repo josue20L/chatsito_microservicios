@@ -1,6 +1,6 @@
 # Guía de instalación - chatsito_microservicios
 
-Versión microservicios del chat "chatsito" para comparar contra el monolito (repo chatsito_backend). Servicios: users (3001), auth (3002), conversations (3003); pendientes: messages y media. Nginx (gateway) en 3000, PostgreSQL en 5433.
+Versión de microservicios del chat "chatsito" para comparar contra el monolito. Servicios: users (3001), auth (3002), conversations (3003), messages (3004), media (3005) y notifications/Socket.IO (3006). Nginx (gateway) está en 3000 y PostgreSQL en 5433.
 
 ## 1. Requisitos
 
@@ -49,9 +49,14 @@ Copy-Item .env.example .env
 Copy-Item users-service\.env.example users-service\.env
 Copy-Item auth-service\.env.example auth-service\.env
 Copy-Item conversations-service\.env.example conversations-service\.env
+Copy-Item messages-service\.env.example messages-service\.env
+Copy-Item media-service\.env.example media-service\.env
+Copy-Item notifications-service\.env.example notifications-service\.env
 ```
 
-**Importante**: JWT_SECRET debe ser idéntico en users-service, auth-service y conversations-service. Si lo cambias, reinicia los tres servicios.
+**Importante**: JWT_SECRET debe ser idéntico en todos los servicios. Verifica que cada `DATABASE_URL` tenga las credenciales correctas.
+
+Para Messages, Media y Notifications también copia sus respectivos `.env.example`; Media requiere su propia base `media_db` y guarda archivos en `media-service/uploads` por defecto.
 
 ## 4. Levantar PostgreSQL y Nginx
 
@@ -75,13 +80,15 @@ Qué debes ver: postgres con status "healthy", nginx con status "Up"
 ```powershell
 docker compose exec postgres psql -U postgres -c "\l"
 ```
-Qué debes ver: users_db y conversations_db en la lista
+Qué debes ver: users_db, conversations_db, messages_db y media_db en la lista
 
 **Nota**: Los scripts db/*.sql solo corren automáticamente si el volumen de PostgreSQL es nuevo. Si faltan bases, ejecútalos a mano:
 
 ```powershell
 docker compose exec postgres psql -U postgres -f /docker-entrypoint-initdb.d/01-users.sql
 docker compose exec postgres psql -U postgres -f /docker-entrypoint-initdb.d/02-conversations.sql
+docker compose exec postgres psql -U postgres -f /docker-entrypoint-initdb.d/03-messages.sql
+docker compose exec postgres psql -U postgres -f /docker-entrypoint-initdb.d/04-media.sql
 ```
 
 **Advertencia**: Nunca uses `docker compose down -v` (borra todos los datos).
@@ -125,6 +132,41 @@ npm run start:dev
 
 Qué debes ver: "Nest application successfully started" en el puerto 3003
 
+### messages-service (puerto 3004)
+
+```powershell
+cd messages-service
+npm install
+npm run prisma:generate
+npm run build
+npm run start:dev
+```
+
+Qué debes ver: "Nest application successfully started" en el puerto 3004
+
+### media-service (puerto 3005)
+
+```powershell
+cd media-service
+npm install
+npm run prisma:generate
+npm run build
+npm run start:dev
+```
+
+Qué debes ver: "Nest application successfully started" en el puerto 3005. Los archivos se guardan en `media-service/uploads` por defecto.
+
+### notifications-service (puerto 3006)
+
+```powershell
+cd notifications-service
+npm install
+npm run build
+npm run start:dev
+```
+
+Qué debes ver: "Nest application successfully started" en el puerto 3006
+
 ## 6. Verificar que todo funciona
 
 | Servicio | Comando | Respuesta esperada |
@@ -132,6 +174,9 @@ Qué debes ver: "Nest application successfully started" en el puerto 3003
 | users-service | `curl http://localhost:3001/health` | {"status":"ok","database":"ok"} |
 | auth-service | `curl http://localhost:3002/health` | {"status":"ok"} |
 | conversations-service | `curl http://localhost:3003/health` | {"status":"ok","database":"ok"} |
+| messages-service | `curl http://localhost:3004/health` | {"status":"ok","database":"ok"} |
+| media-service | `curl http://localhost:3005/health` | {"status":"ok","database":"ok"} |
+| notifications-service | `curl http://localhost:3006/health` | {"status":"ok"} |
 | Nginx gateway | `curl http://localhost:3000/api/health` | {"status":"ok","gateway":"nginx"} |
 
 ## 7. Prueba rápida de punta a punta
@@ -206,9 +251,9 @@ Abre http://localhost:5173 en el navegador.
 
 **Importante**: El monolito (chatsito_backend) debe estar apagado porque usa el mismo puerto 3000.
 
-**Funciona hoy**: registro, login, buscar usuarios, chats privados y grupos, listar conversaciones.
+El envío de audios usa `POST /api/conversations/:id/audio` con `multipart/form-data`: archivo en el campo `file` y duración opcional `duracion_segundos` (1–86400). Se admiten MP3, WAV, OGG, M4A y WEBM de hasta 10 MB. Descarga: `GET /api/media/messages/:id`; reenvío: `POST /api/media/messages/:id/forward` con `{"id_conversacion":"123"}`. Las rutas requieren `Authorization: Bearer <token>`.
 
-**Falla todavía**: mensajes y audios (faltan messages-service y media-service).
+Los archivos y metadatos de audio se guardan en almacenamiento y base propios. La validación de participantes y la creación del mensaje se solicitan por HTTP a Conversations y Messages. Si esos servicios no responden, las operaciones de audio que los necesitan devuelven un error de disponibilidad; Notifications es opcional y sus fallas no cancelan una subida.
 
 ## 9. Cómo apagar todo
 
@@ -227,12 +272,12 @@ NO uses `docker compose down -v` (borra datos).
 | Síntoma | Causa | Solución |
 |---------|-------|----------|
 | docker compose ps vacío | Docker Desktop apagado | Abre Docker Desktop y ejecuta `docker compose up -d postgres nginx` |
-| /health con database: error | PostgreSQL apagado o base inexistente | Verifica `docker compose ps` y que existan users_db y conversations_db |
+| /health con database: error | PostgreSQL apagado o base inexistente | Verifica `docker compose ps` y que existan las bases de datos del servicio |
 | EADDRINUSE | Puerto ocupado | `Get-NetTCPConnection -LocalPort <puerto> -State Listen \| Select-Object OwningProcess` y `Stop-Process -Id <PID> -Force` |
-| 401 entre servicios | JWT_SECRET distinto | Verifica que JWT_SECRET sea idéntico en users-service, auth-service y conversations-service |
+| 401 entre servicios | JWT_SECRET distinto | Verifica que JWT_SECRET sea idéntico en todos los servicios |
 | 404 de nginx en el frontend | Servicio no arrancado o ruta no existe | Verifica que el servicio esté corriendo y la ruta exista en nginx.conf |
 | Error de CORS | Origen incorrecto | El origen debe ser http://localhost:5173 |
-| npm install falla en la raíz | Ejecutando en carpeta equivocada | Ejecuta npm install DENTRO de la carpeta del servicio (users-service, auth-service, conversations-service) |
+| npm install falla en la raíz | Ejecutando en carpeta equivocada | Ejecuta npm install DENTRO de la carpeta del servicio |
 | Falta src/generated | No se generó Prisma Client | Ejecuta `npm run prisma:generate` en el servicio |
 
 ## 11. Estructura del repo
@@ -244,10 +289,15 @@ chatsito_microservicios/
 │   └── nginx.conf           # Configuración del gateway
 ├── db/
 │   ├── 01-users.sql         # Schema de users_db
-│   └── 02-conversations.sql # Schema de conversations_db
-├── users-service/           # Servicio de usuarios (puerto 3001)
-├── auth-service/            # Servicio de autenticación (puerto 3002)
-└── conversations-service/   # Servicio de conversaciones (puerto 3003)
+│   ├── 02-conversations.sql # Schema de conversations_db
+│   ├── 03-messages.sql      # Schema de messages_db
+│   └── 04-media.sql         # Schema de media_db
+├── users-service/           # Puerto 3001
+├── auth-service/            # Puerto 3002
+├── conversations-service/   # Puerto 3003
+├── messages-service/        # Puerto 3004
+├── media-service/           # Puerto 3005
+└── notifications-service/  # Puerto 3006
 ```
 
 ## Estado del proyecto
@@ -255,8 +305,9 @@ chatsito_microservicios/
 - ✅ users-service
 - ✅ auth-service
 - ✅ conversations-service
-- ⏳ messages-service (pendiente)
-- ⏳ media-service (pendiente)
+- ✅ messages-service
+- ✅ media-service
+- ✅ notifications-service
 - ⏳ Dockerizar los servicios (corren localmente por ahora)
 - ⏳ Postman collection
 - ⏳ Pruebas de carga (k6)

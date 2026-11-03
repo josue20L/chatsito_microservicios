@@ -5,9 +5,10 @@ import { MessagesControllerV2 } from './messages.controller.v2.js';
 import { InternalMessagesController } from './internal-messages.controller.js';
 import { UsersClient } from './users.client.js';
 import { ConversationsClient } from './conversations.client.js';
+import { MediaClient } from './media.client.js';
 
 @Module({
   controllers: [MessagesController, MessagesControllerV2, InternalMessagesController],
-  providers: [MessagesService, UsersClient, ConversationsClient],
+  providers: [MessagesService, UsersClient, ConversationsClient, MediaClient],
 })
 export class MessagesModule {}

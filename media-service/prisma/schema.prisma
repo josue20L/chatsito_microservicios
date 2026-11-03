@@ -1,0 +1,25 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model media_archivos {
+  id_archivo        BigInt   @id @default(autoincrement())
+  id_mensaje        BigInt?  @unique
+  id_conversacion   BigInt
+  id_remitente      BigInt
+  nombre            String   @db.VarChar(255)
+  formato           String   @db.VarChar(100)
+  tamano_bytes      BigInt
+  duracion_segundos Int?
+  object_key        String   @unique @db.VarChar(255)
+  reenviado_de_id   BigInt?
+  fecha_subida      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([id_conversacion, id_mensaje])
+}

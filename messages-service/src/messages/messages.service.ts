@@ -12,6 +12,7 @@ import { UpdateMessageDto } from './dto/update-message.dto.js';
 import { ForwardMessageDto } from './dto/forward-message.dto.js';
 import { MessageResponse, Archivo } from './interfaces/message-response.interface.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { MediaClient } from './media.client.js';
 
 @Injectable()
 export class MessagesService {
@@ -19,6 +20,7 @@ export class MessagesService {
     private readonly prisma: PrismaService,
     private readonly usersClient: UsersClient,
     private readonly conversationsClient: ConversationsClient,
+    private readonly mediaClient: MediaClient,
   ) {}
 
   async createMessage(
@@ -104,10 +106,18 @@ export class MessagesService {
 
     const remitentesUnicos = [...new Set(mensajes.map((m) => m.id_remitente.toString()))];
     const nombres = await this.usersClient.obtenerNombres(remitentesUnicos);
+    const audioIds = mensajes
+      .filter((mensaje) => mensaje.tipo === 'audio')
+      .map((mensaje) => mensaje.id_mensaje.toString());
+    const archivos = await this.mediaClient.obtenerArchivos(audioIds);
 
     return mensajes.map((m) => {
       const nombre = nombres.get(m.id_remitente.toString()) || '';
-      return this.toMessageResponse(m, nombre);
+      return this.toMessageResponse(
+        m,
+        nombre,
+        archivos.get(m.id_mensaje.toString()) ?? null,
+      );
     });
   }
 
@@ -308,7 +318,12 @@ export class MessagesService {
     return count;
   }
 
-  async createAudioMessage(body: { id_conversacion: string; id_remitente: string; reenviado_de_id?: string }): Promise<MessageResponse> {
+  async createAudioMessage(body: {
+    id_conversacion: string;
+    id_remitente: string;
+    reenviado_de_id?: string;
+    archivo: Archivo;
+  }): Promise<MessageResponse> {
     const mensaje = await this.prisma.mensajes.create({
       data: {
         id_conversacion: BigInt(body.id_conversacion),
@@ -322,10 +337,7 @@ export class MessagesService {
       },
     });
 
-    const nombres = await this.usersClient.obtenerNombres([body.id_remitente]);
-    const nombreRemitente = nombres.get(body.id_remitente) || '';
-
-    return this.toMessageResponse(mensaje, nombreRemitente);
+    return this.toMessageResponse(mensaje, '', body.archivo);
   }
 
   async getMessageBasicInfo(id: string): Promise<{ id_mensaje: string; id_conversacion: string; id_remitente: string; tipo: string; eliminado_en: Date | null }> {
@@ -355,6 +367,7 @@ export class MessagesService {
   private toMessageResponse(
     mensaje: any,
     nombreRemitente: string,
+    archivo: Archivo | null = null,
   ): MessageResponse {
     return {
       id_mensaje: mensaje.id_mensaje.toString(),
@@ -371,7 +384,7 @@ export class MessagesService {
         nombre: nombreRemitente,
       },
       leido_por: mensaje.lecturas_mensajes.map((l: any) => l.id_usuario.toString()),
-      archivo: null,
+      archivo,
     };
   }
 }

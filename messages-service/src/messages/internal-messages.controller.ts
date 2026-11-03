@@ -1,6 +1,9 @@
 import { Controller, Get, Post, Delete, Param, Body, Query, BadRequestException, NotFoundException, HttpCode, HttpStatus } from '@nestjs/common';
 import { MessagesService } from './messages.service.js';
-import { MessageResponse } from './interfaces/message-response.interface.js';
+import {
+  Archivo,
+  MessageResponse,
+} from './interfaces/message-response.interface.js';
 
 // Rutas internas: no se exponen por el gateway
 @Controller('internal/messages')
@@ -37,7 +40,13 @@ export class InternalMessagesController {
 
   @Post('audio')
   async createAudioMessage(
-    @Body() body: { id_conversacion: string; id_remitente: string; reenviado_de_id?: string },
+    @Body()
+    body: {
+      id_conversacion: string;
+      id_remitente: string;
+      reenviado_de_id?: string;
+      archivo: Archivo;
+    },
   ): Promise<MessageResponse> {
     return this.messagesService.createAudioMessage(body);
   }
