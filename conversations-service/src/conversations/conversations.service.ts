@@ -10,6 +10,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { CreatePrivateDto } from './dto/create-private.dto.js';
 import { CreateGroupDto } from './dto/create-group.dto.js';
 import { AddParticipantDto } from './dto/add-participant.dto.js';
+import { MessagesClient } from './messages.client.js';
 
 type ConversacionConParticipantes = {
   id_conversacion: bigint;
@@ -24,6 +25,7 @@ export class ConversationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly usersClient: UsersClient,
+    private readonly messagesClient: MessagesClient,
   ) {}
 
   // Arma la respuesta con los nombres que vienen de users-service
@@ -154,8 +156,18 @@ export class ConversationsService {
       c.participantes.map((p) => p.id_usuario.toString()),
     );
     const nombres = await this.usersClient.obtenerNombres(ids);
+    const conversationIds = conversaciones.map((c) =>
+      c.id_conversacion.toString(),
+    );
+    const noLeidos = await this.messagesClient.obtenerNoLeidos(
+      currentUser.id_usuario,
+      conversationIds,
+    );
 
-    return conversaciones.map((c) => this.armarRespuesta(c, nombres, false));
+    return conversaciones.map((c) => ({
+      ...this.armarRespuesta(c, nombres, false),
+      noLeidos: noLeidos.get(c.id_conversacion.toString()) ?? 0,
+    }));
   }
 
   async findOne(id: string, currentUser: CurrentUser) {

@@ -58,6 +58,8 @@ Copy-Item notifications-service\.env.example notifications-service\.env
 
 Para Messages, Media y Notifications también copia sus respectivos `.env.example`; Media requiere su propia base `media_db` y guarda archivos en `media-service/uploads` por defecto.
 
+`GET /api/conversations` devuelve el campo `noLeidos` por conversación. Para calcularlo, Conversations consulta el endpoint interno de Messages; Messages debe estar disponible y `MESSAGES_SERVICE_URL` apunta por defecto a `http://localhost:3004`.
+
 ## 4. Levantar PostgreSQL y Nginx
 
 1. Abre Docker Desktop y espera a que esté corriendo.
