@@ -52,6 +52,10 @@ export class MediaClient {
       return archivos;
     }
 
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      this.logger.warn('media-service devolvió metadatos inválidos');
+      return archivos;
+    }
     for (const [messageId, archivo] of Object.entries(data)) {
       if (
         archivo &&

@@ -42,8 +42,8 @@ export class ConversationsService {
       participantes: conv.participantes.map((p) => {
         const id = p.id_usuario.toString();
         return conFechaUnion
-          ? { id_usuario: id, nombre: nombres.get(id) ?? '', fecha_union: p.fecha_union }
-          : { id_usuario: id, nombre: nombres.get(id) ?? '' };
+          ? { id_usuario: id, nombre: nombres.get(id) ?? `Usuario ${id}`, fecha_union: p.fecha_union }
+          : { id_usuario: id, nombre: nombres.get(id) ?? `Usuario ${id}` };
       }),
     };
   }
@@ -155,18 +155,18 @@ export class ConversationsService {
     const ids = conversaciones.flatMap((c) =>
       c.participantes.map((p) => p.id_usuario.toString()),
     );
-    const nombres = await this.usersClient.obtenerNombres(ids);
     const conversationIds = conversaciones.map((c) =>
       c.id_conversacion.toString(),
     );
-    const noLeidos = await this.messagesClient.obtenerNoLeidos(
-      currentUser.id_usuario,
-      conversationIds,
-    );
+    const [nombres, noLeidos] = await Promise.all([
+      this.usersClient.obtenerNombres(ids, true),
+      this.messagesClient.obtenerNoLeidos(currentUser.id_usuario, conversationIds)
+        .catch(() => new Map<string, number>()),
+    ]);
 
     return conversaciones.map((c) => ({
       ...this.armarRespuesta(c, nombres, false),
-      noLeidos: noLeidos.get(c.id_conversacion.toString()) ?? 0,
+      noLeidos: noLeidos.get(c.id_conversacion.toString()) ?? null,
     }));
   }
 
@@ -188,6 +188,7 @@ export class ConversationsService {
 
     const nombres = await this.usersClient.obtenerNombres(
       conversacion.participantes.map((p) => p.id_usuario.toString()),
+      true,
     );
     return this.armarRespuesta(conversacion, nombres, true);
   }

@@ -15,14 +15,26 @@ export class UsersClient {
 
   // Pide a users-service los usuarios que existan. Devuelve un mapa id -> nombre.
   // Los ids que no existan simplemente no aparecen en el mapa.
-  async obtenerNombres(ids: string[]): Promise<Map<string, string>> {
+  async obtenerNombres(ids: string[], opcional = false): Promise<Map<string, string>> {
+    try {
+      return await this.consultarNombres(ids);
+    } catch (error) {
+      // Las escrituras siguen exigiendo usuarios existentes; las lecturas pueden degradarse.
+      if (opcional) return new Map();
+      throw error;
+    }
+  }
+
+  private async consultarNombres(ids: string[]): Promise<Map<string, string>> {
     const unicos = [...new Set(ids)];
     const nombres = new Map<string, string>();
     if (unicos.length === 0) return nombres;
 
     let res: Response;
     try {
-      res = await fetch(`${this.baseUrl}/internal/users?ids=${unicos.join(',')}`);
+      res = await fetch(`${this.baseUrl}/internal/users?ids=${unicos.join(',')}`, {
+        signal: AbortSignal.timeout(2000),
+      });
     } catch {
       throw new ServiceUnavailableException('users-service no disponible');
     }

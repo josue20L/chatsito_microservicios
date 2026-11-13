@@ -1,0 +1,140 @@
+name: chatsito-micro
+
+x-service: &service
+  restart: unless-stopped
+  init: true
+  healthcheck:
+    test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+process.env.PORT+'/health').then(async r=>process.exit(r.ok&&(await r.json()).status==='ok'?0:1)).catch(()=>process.exit(1))"]
+    interval: 10s
+    timeout: 5s
+    retries: 6
+    start_period: 30s
+
+x-environment: &environment
+  JWT_SECRET: ${MICRO_JWT_SECRET:-solo-desarrollo-cambiar-este-secreto}
+  USERS_SERVICE_URL: http://users-service:3001
+  CONVERSATIONS_SERVICE_URL: http://conversations-service:3003
+  MESSAGES_SERVICE_URL: http://messages-service:3004
+  MEDIA_SERVICE_URL: http://media-service:3005
+  NOTIFICATIONS_SERVICE_URL: http://notifications-service:3006
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${MICRO_POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: postgres
+    volumes:
+      - micro_postgres_data:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  users-service:
+    <<: *service
+    build: ./users-service
+    environment:
+      <<: *environment
+      PORT: "3001"
+      DATABASE_URL: postgresql://postgres:${MICRO_POSTGRES_PASSWORD:-postgres}@postgres:5432/users_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  auth-service:
+    <<: *service
+    build: ./auth-service
+    environment:
+      <<: *environment
+      PORT: "3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  conversations-service:
+    <<: *service
+    build: ./conversations-service
+    environment:
+      <<: *environment
+      PORT: "3003"
+      DATABASE_URL: postgresql://postgres:${MICRO_POSTGRES_PASSWORD:-postgres}@postgres:5432/conversations_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  messages-service:
+    <<: *service
+    build: ./messages-service
+    environment:
+      <<: *environment
+      PORT: "3004"
+      DATABASE_URL: postgresql://postgres:${MICRO_POSTGRES_PASSWORD:-postgres}@postgres:5432/messages_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  notifications-service:
+    <<: *service
+    build: ./notifications-service
+    environment:
+      <<: *environment
+      PORT: "3006"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  media-service:
+    <<: *service
+    build: ./media-service
+    environment:
+      <<: *environment
+      PORT: "3005"
+      DATABASE_URL: postgresql://postgres:${MICRO_POSTGRES_PASSWORD:-postgres}@postgres:5432/media_db
+      MEDIA_STORAGE_DIR: /app/uploads
+    volumes:
+      - micro_media_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api-gateway:
+    build: ./nginx
+    image: j4mm32/chatsito-api-gateway:v1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MICRO_API_PORT:-3100}:3000"
+    networks:
+      default:
+        aliases:
+          - backend
+    depends_on:
+      users-service:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      conversations-service:
+        condition: service_healthy
+      messages-service:
+        condition: service_healthy
+      notifications-service:
+        condition: service_healthy
+      media-service:
+        condition: service_healthy
+
+  frontend:
+    build: ../frontend-chatsito
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MICRO_FRONTEND_PORT:-8081}:80"
+    depends_on:
+      api-gateway:
+        condition: service_started
+
+volumes:
+  micro_postgres_data:
+  micro_media_uploads:

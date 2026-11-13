@@ -250,7 +250,7 @@ export class MediaService {
         reenviado_de_id: forwardedFromId ?? null,
         archivo: this.toArchivo(record),
       };
-      await this.notifyMessageChanged(record.id_conversacion.toString());
+      void this.notifyMessageChanged(record.id_conversacion.toString(), message.id_mensaje, senderId);
       return response;
     } catch (error) {
       await this.rollbackCreatedAudio(record, messageId);
@@ -360,12 +360,12 @@ export class MediaService {
     );
   }
 
-  private async notifyMessageChanged(conversationId: string): Promise<void> {
+  private async notifyMessageChanged(conversationId: string, messageId: string, senderId: string): Promise<void> {
     try {
       const response = await fetch(`${this.notificationsUrl}/internal/notify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversationId, kind: 'message' }),
+        body: JSON.stringify({ conversationId, kind: 'message', messageId, senderId }),
         signal: AbortSignal.timeout(2000),
       });
       if (!response.ok) {

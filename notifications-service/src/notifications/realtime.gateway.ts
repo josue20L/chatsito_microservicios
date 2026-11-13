@@ -85,7 +85,8 @@ export class RealtimeGateway
   }
 
   // Emite a los participantes de una conversación
-  async changed(conversationId: string, kind: 'message' | 'read' | 'conversation') {
+  async changed(conversationId: string, kind: 'message' | 'read' | 'conversation',
+    created?: { messageId: string; senderId: string }) {
     const conversationsUrl = this.configService.get<string>('CONVERSATIONS_SERVICE_URL');
     if (!conversationsUrl) {
       this.logger.error('CONVERSATIONS_SERVICE_URL no está definido');
@@ -93,14 +94,10 @@ export class RealtimeGateway
     }
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
-
       const response = await fetch(
         `${conversationsUrl}/internal/conversations/${conversationId}/participants`,
-        { signal: controller.signal },
+        { signal: AbortSignal.timeout(2000) },
       );
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
         this.logger.error(
@@ -112,11 +109,13 @@ export class RealtimeGateway
       const data = await response.json();
       const participantes: string[] = data.participantes || [];
 
-      for (const id of participantes) {
-        this.server.to(`user:${id}`).emit('chat:changed', {
+      const rooms = [...new Set(participantes.map(id => `user:${id}`))];
+      if (rooms.length) {
+        this.server.to(rooms).emit('chat:changed', {
           conversationId,
           kind,
         });
+        if (created) this.server.to(rooms).emit('chat:message', { conversationId, ...created });
       }
     } catch (error) {
       this.logger.error('Error al notificar a participantes:', error);

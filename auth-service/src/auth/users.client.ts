@@ -24,7 +24,9 @@ export class UsersClient {
   // Hace la llamada HTTP; si users-service no responde, lanza 503
   private async llamar(ruta: string, init?: RequestInit) {
     try {
-      const res = await fetch(`${this.baseUrl}${ruta}`, init);
+      const res = await fetch(`${this.baseUrl}${ruta}`, {
+        ...init, signal: AbortSignal.timeout(2000),
+      });
       const texto = await res.text();
       const cuerpo = texto ? JSON.parse(texto) : null;
       return { status: res.status, cuerpo };

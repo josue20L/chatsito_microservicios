@@ -2,6 +2,12 @@
 
 Versión de microservicios del chat "chatsito" para comparar contra el monolito. Servicios: users (3001), auth (3002), conversations (3003), messages (3004), media (3005) y notifications/Socket.IO (3006). Nginx (gateway) está en 3000 y PostgreSQL en 5433.
 
+Consulta [RESILIENCIA.md](RESILIENCIA.md) para la comparación con el monolito,
+el comportamiento ante caídas y las pruebas de independencia.
+Para ejecutar todo en Docker, consulta [DOCKER.md](DOCKER.md):
+`docker compose -f compose.docker.yaml up -d --build` y abre http://localhost:8081.
+Los pasos siguientes corresponden al desarrollo con servicios fuera de Docker.
+
 ## 1. Requisitos
 
 ```powershell

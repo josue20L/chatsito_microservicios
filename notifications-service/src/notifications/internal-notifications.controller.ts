@@ -10,7 +10,8 @@ export class InternalNotificationsController {
   @Post()
   @HttpCode(202)
   async notify(@Body() dto: NotifyDto) {
-    await this.realtimeGateway.changed(dto.conversationId, dto.kind);
+    await this.realtimeGateway.changed(dto.conversationId, dto.kind,
+      dto.messageId && dto.senderId ? { messageId: dto.messageId, senderId: dto.senderId } : undefined);
     return { ok: true };
   }
 }

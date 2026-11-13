@@ -37,7 +37,7 @@ export class MessagesService {
     }
 
     const nombres = await this.usersClient.obtenerNombres([user.id_usuario]);
-    const nombreRemitente = nombres.get(user.id_usuario) || '';
+    const nombreRemitente = nombres.get(user.id_usuario) || `Usuario ${user.id_usuario}`;
 
     const mensaje = await this.prisma.mensajes.create({
       data: {
@@ -112,7 +112,7 @@ export class MessagesService {
     const archivos = await this.mediaClient.obtenerArchivos(audioIds);
 
     return mensajes.map((m) => {
-      const nombre = nombres.get(m.id_remitente.toString()) || '';
+      const nombre = nombres.get(m.id_remitente.toString()) || `Usuario ${m.id_remitente}`;
       return this.toMessageResponse(
         m,
         nombre,
@@ -162,7 +162,7 @@ export class MessagesService {
     });
 
     const nombres = await this.usersClient.obtenerNombres([user.id_usuario]);
-    const nombreRemitente = nombres.get(user.id_usuario) || '';
+    const nombreRemitente = nombres.get(user.id_usuario) || `Usuario ${user.id_usuario}`;
 
     return this.toMessageResponse(actualizado, nombreRemitente);
   }
@@ -261,7 +261,7 @@ export class MessagesService {
     });
 
     const nombres = await this.usersClient.obtenerNombres([user.id_usuario]);
-    const nombreRemitente = nombres.get(user.id_usuario) || '';
+    const nombreRemitente = nombres.get(user.id_usuario) || `Usuario ${user.id_usuario}`;
 
     return this.toMessageResponse(nuevo, nombreRemitente);
   }
