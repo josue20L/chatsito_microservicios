@@ -36,6 +36,7 @@ services:
       retries: 10
 
   users-service:
+    image: j4mm32/chatsito-users:v1
     <<: *service
     build: ./users-service
     environment:
@@ -47,6 +48,7 @@ services:
         condition: service_healthy
 
   auth-service:
+    image: j4mm32/chatsito-auth:v1
     <<: *service
     build: ./auth-service
     environment:
@@ -57,6 +59,7 @@ services:
         condition: service_healthy
 
   conversations-service:
+    image: j4mm32/chatsito-conversations:v1
     <<: *service
     build: ./conversations-service
     environment:
@@ -68,6 +71,7 @@ services:
         condition: service_healthy
 
   messages-service:
+    image: j4mm32/chatsito-messages:v1
     <<: *service
     build: ./messages-service
     environment:
@@ -79,6 +83,7 @@ services:
         condition: service_healthy
 
   notifications-service:
+    image: j4mm32/chatsito-notifications:v1
     <<: *service
     build: ./notifications-service
     environment:
@@ -89,6 +94,7 @@ services:
         condition: service_healthy
 
   media-service:
+    image: j4mm32/chatsito-media:v1
     <<: *service
     build: ./media-service
     environment:
@@ -127,6 +133,7 @@ services:
         condition: service_healthy
 
   frontend:
+    image: j4mm32/chatsito-frontend:v1
     build: ../frontend-chatsito
     restart: unless-stopped
     ports:
